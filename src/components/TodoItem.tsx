@@ -1,15 +1,57 @@
-import React from 'react';
-import { Todo } from '../types/Todo';
+import React, { useEffect, useState } from 'react';
 import cn from 'classnames';
+
+import { Todo } from '../types/Todo';
+import { deleteTodo } from '../api/todos';
 
 type TodoItemProps = {
   todo: Todo;
-  isLoading?: boolean;
+  setTodos?: React.Dispatch<React.SetStateAction<Todo[]>>;
+  setError?: React.Dispatch<React.SetStateAction<string>>;
+  isLoad?: boolean;
+  todoIdsToDelete?: number[];
+  inputTodoRef?: React.MutableRefObject<HTMLInputElement | null>;
 };
 
 export const TodoItem: React.FC<TodoItemProps> = React.memo(
-  ({ todo, isLoading }) => {
-    const { completed, title } = todo;
+  ({
+    todo,
+    isLoad,
+    setTodos = () => {},
+    setError = () => {},
+    todoIdsToDelete,
+    inputTodoRef,
+  }) => {
+    const { completed, title, id } = todo;
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+      if (isLoad) {
+        setIsLoading(true);
+      }
+
+      const needLoad = todoIdsToDelete?.some(idToDelete => idToDelete === id);
+
+      if (needLoad) {
+        setIsLoading(true);
+      }
+
+      return () => setIsLoading(false);
+    }, [isLoad, todoIdsToDelete, id]);
+
+    const handleDelete = () => {
+      setIsLoading(true);
+
+      deleteTodo(id)
+        .then(() => {
+          setTodos(currentTodos => currentTodos.filter(t => t.id !== id));
+        })
+        .catch(() => setError('Unable to delete a todo'))
+        .finally(() => {
+          setIsLoading(false);
+          inputTodoRef?.current?.focus();
+        });
+    };
 
     return (
       <div
@@ -33,7 +75,12 @@ export const TodoItem: React.FC<TodoItemProps> = React.memo(
         </span>
 
         {/* Remove button appears only on hover */}
-        <button type="button" className="todo__remove" data-cy="TodoDelete">
+        <button
+          onClick={handleDelete}
+          type="button"
+          className="todo__remove"
+          data-cy="TodoDelete"
+        >
           ×
         </button>
 

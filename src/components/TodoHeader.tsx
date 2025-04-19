@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { addTodo, USER_ID } from '../api/todos';
 import { Todo } from '../types/Todo';
@@ -6,20 +6,24 @@ import { Todo } from '../types/Todo';
 interface TodoHeaderProps {
   setError: React.Dispatch<React.SetStateAction<string>>;
   setTempTodo: React.Dispatch<React.SetStateAction<Todo | null>>;
+  setTodos: React.Dispatch<React.SetStateAction<Todo[]>>;
+  inputTodoRef: React.MutableRefObject<HTMLInputElement | null>;
 }
 
 export const TodoHeader: React.FC<TodoHeaderProps> = ({
   setError,
   setTempTodo,
+  setTodos,
+  inputTodoRef,
 }) => {
   const [inputValue, setInputValue] = useState('');
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const inputEl = inputTodoRef.current;
 
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    inputEl?.focus();
+  }, [inputEl]);
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     if (!inputValue.trim()) {
@@ -28,18 +32,32 @@ export const TodoHeader: React.FC<TodoHeaderProps> = ({
       return;
     }
 
-    (inputRef.current as HTMLInputElement).disabled = true;
+    if (inputEl) {
+      inputEl.disabled = true;
+    }
 
     const todoData: Omit<Todo, 'id'> = {
-      title: inputValue,
+      title: inputValue.trim(),
       completed: false,
       userId: USER_ID,
     };
 
-    addTodo(todoData)
-      .then(res => console.log(res))
-      .catch(e => console.log(e));
-    setTempTodo({ ...todoData, id: 0 });
+    try {
+      setTempTodo({ ...todoData, id: 0 });
+      const addedTodo = await addTodo(todoData);
+
+      setTodos(currentTodos => [...currentTodos, addedTodo]);
+      setInputValue('');
+    } catch {
+      setError('Unable to add a todo');
+    } finally {
+      setTempTodo(null);
+
+      if (inputEl) {
+        inputEl.disabled = false;
+        inputEl.focus();
+      }
+    }
   };
 
   return (
@@ -54,7 +72,7 @@ export const TodoHeader: React.FC<TodoHeaderProps> = ({
       {/* Add a todo on form submit */}
       <form onSubmit={handleSubmit}>
         <input
-          ref={inputRef}
+          ref={inputTodoRef}
           data-cy="NewTodoField"
           type="text"
           className="todoapp__new-todo"

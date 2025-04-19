@@ -9,10 +9,18 @@ interface TodoFooterProps {
   setFilterBy: React.Dispatch<React.SetStateAction<Filter>>;
   filterBy: Filter;
   activeTodosCount: number;
+  completedTodosCount: number;
+  onClick: () => void;
 }
 
 export const TodoFooter: React.FC<TodoFooterProps> = React.memo(
-  ({ setFilterBy, filterBy, activeTodosCount }) => {
+  ({
+    setFilterBy,
+    filterBy,
+    activeTodosCount,
+    completedTodosCount,
+    onClick,
+  }) => {
     return (
       <footer className="todoapp__footer" data-cy="Footer">
         <span className="todo-count" data-cy="TodosCounter">
@@ -41,6 +49,8 @@ export const TodoFooter: React.FC<TodoFooterProps> = React.memo(
           type="button"
           className="todoapp__clear-completed"
           data-cy="ClearCompletedButton"
+          onClick={onClick}
+          disabled={completedTodosCount === 0}
         >
           Clear completed
         </button>

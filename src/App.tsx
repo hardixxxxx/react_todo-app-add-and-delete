@@ -1,10 +1,10 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable jsx-a11y/control-has-associated-label */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import cn from 'classnames';
 
 import { Todo } from './types/Todo';
-import { getTodos } from './api/todos';
+import { deleteTodo, getTodos } from './api/todos';
 import { TodoHeader } from './components/TodoHeader';
 import { TodoList } from './components/TodoList';
 import { TodoFooter } from './components/TodoFooter';
@@ -16,6 +16,9 @@ export const App: React.FC = () => {
   const [filterBy, setFilterBy] = useState<Filter>('All');
   const [activeTodosCount, setActiveTodosCount] = useState(0);
   const [tempTodo, setTempTodo] = useState<Todo | null>(null);
+  const [todoIdsToDelete, setTodoIdsToDelete] = useState<number[]>([]);
+
+  const inputTodoRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     getTodos()
@@ -58,15 +61,70 @@ export const App: React.FC = () => {
     });
   }, [todos, filterBy]);
 
+  const completedTodos = useMemo(
+    () => todos.filter(todo => todo.completed),
+    [todos],
+  );
+
+  const completedTodosIds = useMemo(
+    () => completedTodos.map(todo => todo.id),
+    [completedTodos],
+  );
+
+  const deleteAllCompleted = async () => {
+    if (completedTodosIds.length === 0) {
+      return;
+    }
+
+    try {
+      setTodoIdsToDelete(completedTodosIds);
+
+      const results = await Promise.allSettled(
+        completedTodosIds.map(id =>
+          deleteTodo(id).then(() => {
+            setTodos(currentTodos => currentTodos.filter(t => t.id !== id));
+          }),
+        ),
+      );
+
+      const hasError = results.some(result => result.status === 'rejected');
+
+      if (hasError) {
+        throw new Error('Unable to delete a todo');
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Unknown error');
+      }
+    } finally {
+      setTodoIdsToDelete([]);
+      inputTodoRef.current?.focus();
+    }
+  };
+
   return (
     <div className="todoapp">
       <h1 className="todoapp__title">todos</h1>
 
       <div className="todoapp__content">
-        <TodoHeader setError={setError} setTempTodo={setTempTodo} />
+        <TodoHeader
+          setError={setError}
+          setTempTodo={setTempTodo}
+          setTodos={setTodos}
+          inputTodoRef={inputTodoRef}
+        />
 
         {todos.length !== 0 && (
-          <TodoList todos={filteredTodos} tempTodo={tempTodo} />
+          <TodoList
+            todos={filteredTodos}
+            tempTodo={tempTodo}
+            setTodos={setTodos}
+            setError={setError}
+            todoIdsToDelete={todoIdsToDelete}
+            inputTodoRef={inputTodoRef}
+          />
         )}
 
         {todos.length !== 0 && (
@@ -74,6 +132,8 @@ export const App: React.FC = () => {
             setFilterBy={setFilterBy}
             filterBy={filterBy}
             activeTodosCount={activeTodosCount}
+            completedTodosCount={completedTodos.length}
+            onClick={deleteAllCompleted}
           />
         )}
       </div>
