@@ -14,7 +14,6 @@ export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [error, setError] = useState('');
   const [filterBy, setFilterBy] = useState<Filter>('All');
-  const [activeTodosCount, setActiveTodosCount] = useState(0);
   const [tempTodo, setTempTodo] = useState<Todo | null>(null);
   const [todoIdsToDelete, setTodoIdsToDelete] = useState<number[]>([]);
 
@@ -27,14 +26,6 @@ export const App: React.FC = () => {
         setError('Unable to load todos');
       });
   }, []);
-
-  useEffect(() => {
-    const activeTodos = todos.reduce((sum, todo) => {
-      return !todo.completed ? sum + 1 : sum;
-    }, 0);
-
-    setActiveTodosCount(activeTodos);
-  }, [todos]);
 
   useEffect(() => {
     let timeOutId = 0;
@@ -69,6 +60,11 @@ export const App: React.FC = () => {
   const completedTodosIds = useMemo(
     () => completedTodos.map(todo => todo.id),
     [completedTodos],
+  );
+
+  const activeTodosCount = useMemo(
+    () => todos.reduce((sum, todo) => (!todo.completed ? sum + 1 : sum), 0),
+    [todos],
   );
 
   const deleteAllCompleted = async () => {
